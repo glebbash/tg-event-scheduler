@@ -1,27 +1,31 @@
-# Based on https://github.com/denoland/deno_docker/blob/main/alpine.dockerfile
+FROM rust:latest as builder
 
-ARG DENO_VERSION=1.26.1
-ARG BIN_IMAGE=denoland/deno:bin-${DENO_VERSION}
-FROM ${BIN_IMAGE} AS bin
+# Make a fake Rust app to keep a cached layer of compiled crates
+RUN USER=root cargo new app
+WORKDIR /usr/src/app
+COPY Cargo.toml Cargo.lock ./
+# Needs at least a main.rs file with a main function
+RUN mkdir src && echo "fn main(){}" > src/main.rs
+# Will build all dependent crates in release mode
+RUN --mount=type=cache,target=/usr/local/cargo/registry \
+    --mount=type=cache,target=/usr/src/app/target \
+    cargo build --release
 
-FROM frolvlad/alpine-glibc:alpine-3.13
-
-RUN apk --no-cache add ca-certificates
-
-RUN addgroup --gid 1000 deno \
-  && adduser --uid 1000 --disabled-password deno --ingroup deno \
-  && mkdir /deno-dir/ \
-  && chown deno:deno /deno-dir/
-
-ENV DENO_DIR /deno-dir/
-ENV DENO_INSTALL_ROOT /usr/local
-
-ARG DENO_VERSION
-ENV DENO_VERSION=${DENO_VERSION}
-COPY --from=bin /deno /bin/deno
-
-WORKDIR /deno-dir
+# Copy the rest
 COPY . .
+# Build (install) the actual binaries
+RUN cargo install --path .
 
-ENTRYPOINT ["/bin/deno"]
-CMD ["run", "--allow-net", "https://deno.land/std/examples/echo_server.ts"]
+# Runtime image
+FROM debian:bullseye-slim
+
+# Run as "app" user
+RUN useradd -ms /bin/bash app
+
+USER app
+WORKDIR /app
+
+# Get compiled binaries from builder's cargo install directory
+COPY --from=builder /usr/local/cargo/bin/hello /app/hello
+
+# No CMD or ENTRYPOINT, see fly.toml with `cmd` override.

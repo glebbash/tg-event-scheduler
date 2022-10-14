@@ -1,0 +1,20 @@
+[package]
+name = "tg-event-scheduler"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+dotenv = "0.15.0"
+teloxide = { version = "0.11", features = ["macros", "auto-send", "webhooks-axum"] }
+log = "0.4"
+pretty_env_logger = "0.4"
+tokio = { version =  "1.8", features = ["rt-multi-thread", "macros"] }
+mongodb = "2.3.0"
+anyhow = "1.0.34"
+serde = { version = "1.0", features = ["derive"] }
+
+[[bin]]
+name = "tg-event-scheduler"
+path = "src/main.rs"
