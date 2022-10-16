@@ -18,6 +18,7 @@ struct Item {
 #[tokio::main]
 async fn main() {
     dotenv().ok();
+    openssl_probe::init_ssl_cert_env_vars();
     pretty_env_logger::init();
     log::info!("Starting command bot...");
 
