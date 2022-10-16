@@ -15,6 +15,9 @@ mongodb = "2.3.0"
 anyhow = "1.0.34"
 serde = { version = "1.0", features = ["derive"] }
 warp = "0.3"
+futures = "0.3.24"
+chrono = "0.4.22"
+chrono-english = "0.1.7"
 
 [[bin]]
 name = "tg-event-scheduler"
