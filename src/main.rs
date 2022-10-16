@@ -8,6 +8,7 @@ use mongodb::{
 use serde::{Deserialize, Serialize};
 use std::env;
 use teloxide::{prelude::*, utils::command::BotCommands};
+use warp::Filter;
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 struct Item {
@@ -23,16 +24,25 @@ async fn main() {
 
     let mongo = mongo_connect().await.expect("Cannot connect to mongodb");
 
-    Dispatcher::builder(
-        Bot::from_env(),
-        Update::filter_message()
-            .branch(dptree::entry().filter_command::<Command>().endpoint(answer)),
-    )
-    .dependencies(dptree::deps![mongo])
-    .enable_ctrlc_handler()
-    .build()
-    .dispatch()
-    .await;
+    let _ = tokio::join!(
+        tokio::spawn(async move {
+            Dispatcher::builder(
+                Bot::from_env(),
+                Update::filter_message()
+                    .branch(dptree::entry().filter_command::<Command>().endpoint(answer)),
+            )
+            .dependencies(dptree::deps![mongo])
+            .enable_ctrlc_handler()
+            .build()
+            .dispatch()
+            .await;
+        }),
+        tokio::spawn(async move {
+            warp::serve(warp::any().map(|| "OK"))
+                .run(([0, 0, 0, 0], 8080))
+                .await;
+        })
+    );
 }
 
 #[derive(BotCommands, Clone)]
