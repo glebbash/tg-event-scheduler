@@ -19,6 +19,10 @@ RUN cargo install --path .
 # Runtime image
 FROM debian:bullseye-slim
 
+# install SSL certificates to make outbound HTTPS requests work
+RUN apt-get update
+RUN DEBIAN_FRONTEND=noninteractive apt-get install libssl-dev ca-certificates -y
+
 # Run as "app" user
 RUN useradd -ms /bin/bash app
 

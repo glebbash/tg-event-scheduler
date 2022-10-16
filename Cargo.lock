@@ -1839,7 +1839,6 @@ dependencies = [
  "dotenv",
  "log",
  "mongodb",
- "openssl-probe",
  "pretty_env_logger",
  "serde",
  "teloxide",
