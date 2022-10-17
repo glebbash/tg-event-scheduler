@@ -8,6 +8,7 @@ use teloxide::{
     utils::command::{BotCommands, ParseError},
 };
 
+// TODO: add command to delete events
 #[derive(BotCommands, Clone)]
 #[command(
     rename_rule = "lowercase",
