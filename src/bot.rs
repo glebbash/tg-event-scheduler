@@ -16,13 +16,12 @@ use teloxide::{
 enum Command {
     #[command(description = "get help")]
     Help,
-    #[command(description = "subscribe current chat to specified channel")]
+    #[command(description = "<channel-name> - subscribe current chat to specified channel")]
     Subscribe(String),
-    #[command(description = "unsubscribe current chat from specified channel")]
+    #[command(description = "<channel-name> - unsubscribe current chat from specified channel")]
     UnSubscribe(String),
-    // /schedule 501, mon 1p, [1s]
     #[command(
-        description = "schedule a message to be sent in 5 seconds",
+        description = "<channel-name>, <date> - schedule replied message to be sent as specified date",
         parse_with = accept_two_digits,
     )]
     Schedule(String, String, Option<String>),
