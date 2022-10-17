@@ -14,6 +14,8 @@ use teloxide::{
     description = "These commands are supported:"
 )]
 enum Command {
+    #[command(description = "get help")]
+    Help,
     #[command(description = "subscribe current chat to specified channel")]
     Subscribe(String),
     #[command(description = "unsubscribe current chat from specified channel")]
@@ -28,6 +30,12 @@ enum Command {
 
 async fn handle_bot_commands(bot: Bot, db: EventsDB, msg: Message, cmd: Command) -> Result<()> {
     match cmd {
+        Command::Help => {
+            bot.send_message(msg.chat.id, Command::descriptions().to_string())
+                .await?;
+
+            return Ok(());
+        }
         Command::Subscribe(channel) => {
             db.subscribe(msg.chat.id.0, channel).await?;
         }
