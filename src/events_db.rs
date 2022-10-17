@@ -32,7 +32,7 @@ pub struct Event {
     pub message: String,
     #[serde(rename = "notifyAt")]
     pub notify_at: DateTime,
-    pub interval: Option<u8>,
+    pub interval: Option<String>,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -78,7 +78,7 @@ impl EventChangeListener {
 }
 
 impl EventsDB {
-    pub async fn add_event(self, event: Event) -> Result<()> {
+    pub async fn add_event(&self, event: Event) -> Result<()> {
         self.get_event_triggers()
             .insert_one(
                 EventTrigger {
@@ -142,7 +142,7 @@ impl EventsDB {
         Ok(())
     }
 
-    pub async fn get_subscribers(&self, channel: String) -> Result<Vec<i64>> {
+    pub async fn get_subscribers(&self, channel: &String) -> Result<Vec<i64>> {
         let mut cursor = self
             .get_subscriptions()
             .find(doc! { "channel": channel }, None)

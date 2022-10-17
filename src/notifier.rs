@@ -1,5 +1,7 @@
-use crate::events_db::{EventChange, EventsDB};
+use crate::events_db::{Event, EventChange, EventsDB};
 
+use chrono::Duration;
+use mongodb::bson::DateTime;
 use teloxide::{prelude::Requester, types::ChatId, Bot};
 
 pub async fn start(bot: Bot, db: EventsDB) {
@@ -15,7 +17,7 @@ pub async fn start(bot: Bot, db: EventsDB) {
 
             log::info!("Event triggered: {:?}", event);
 
-            let chat_ids = db.get_subscribers(event.channel).await.unwrap();
+            let chat_ids = db.get_subscribers(&event.channel).await.unwrap();
 
             // TODO: send in parralel?
             for chat_id in chat_ids {
@@ -24,8 +26,22 @@ pub async fn start(bot: Bot, db: EventsDB) {
                     .unwrap();
             }
 
-            // TODO: handle repeating events
             db.delete_event(event_id).await.unwrap();
+
+            if let Some(interval) = &event.interval {
+                let duration = parse_duration::parse(&interval).unwrap();
+                let notify_at = event.notify_at.to_chrono() + Duration::from_std(duration).unwrap();
+
+                db.add_event(Event {
+                    id: event.id,
+                    channel: event.channel.clone(),
+                    message: event.message,
+                    notify_at: DateTime::from_chrono(notify_at),
+                    interval: event.interval,
+                })
+                .await
+                .unwrap();
+            }
         }
     }
 }

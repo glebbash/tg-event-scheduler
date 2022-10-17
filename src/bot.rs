@@ -16,13 +16,13 @@ use teloxide::{
 enum Command {
     #[command(description = "get help")]
     Help,
-    #[command(description = "<channel-name> - subscribe current chat to specified channel")]
+    #[command(description = "<topic-name> - subscribe current chat to specified topic")]
     Subscribe(String),
-    #[command(description = "<channel-name> - unsubscribe current chat from specified channel")]
+    #[command(description = "<topic-name> - unsubscribe current chat from specified topic")]
     UnSubscribe(String),
     #[command(
-        description = "<channel-name>, <date> - schedule replied message to be sent as specified date",
-        parse_with = accept_two_digits,
+        description = "<topic-name>, <date> - schedule replied message to be sent at specified date",
+        parse_with = parse_args,
     )]
     Schedule(String, String, Option<String>),
 }
@@ -41,7 +41,7 @@ async fn handle_bot_commands(bot: Bot, db: EventsDB, msg: Message, cmd: Command)
         Command::UnSubscribe(channel) => {
             db.unsubscribe(msg.chat.id.0, channel).await?;
         }
-        Command::Schedule(channel, notify_at_str, _interval_str) => {
+        Command::Schedule(channel, notify_at_str, interval) => {
             let event_message = msg
                 .reply_to_message()
                 .and_then(|reply| reply.text())
@@ -62,22 +62,26 @@ async fn handle_bot_commands(bot: Bot, db: EventsDB, msg: Message, cmd: Command)
                 Utc::now().with_timezone(&get_ukraine_tz()),
                 Dialect::Uk,
             );
-
             if notify_at.is_err() {
                 bot.send_message(msg.chat.id, "Err: Invalid date").await?;
                 return Ok(());
             }
             let notify_at = notify_at.unwrap();
 
-            // TODO: handle intervals
-            // let interval = chrono_english::parse_duration(&interval_str).unwrap();
+            if let Some(interval_str) = &interval {
+                if let Err(err) = parse_duration::parse(interval_str) {
+                    bot.send_message(msg.chat.id, format!("Err: Invalid interval: {err}"))
+                        .await?;
+                    return Ok(());
+                }
+            }
 
             db.add_event(Event {
                 id: msg.id.0,
                 channel,
                 message: event_message,
-                notify_at: DateTime::from_millis(notify_at.timestamp_millis()),
-                interval: None,
+                notify_at: DateTime::from_chrono(notify_at),
+                interval,
             })
             .await?;
         }
@@ -104,7 +108,7 @@ pub async fn start(bot: Bot, db: EventsDB) {
     .await;
 }
 
-fn accept_two_digits(input: String) -> Result<(String, String, Option<String>), ParseError> {
+fn parse_args(input: String) -> Result<(String, String, Option<String>), ParseError> {
     let parts = input.split(",").collect::<Vec<&str>>();
 
     match parts.len() {
