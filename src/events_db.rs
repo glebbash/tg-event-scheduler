@@ -1,6 +1,8 @@
 use anyhow::Result;
 use futures::stream::StreamExt;
 use futures::stream::TryStreamExt;
+use mongodb::error::ErrorKind;
+use mongodb::error::WriteFailure;
 use mongodb::{
     bson::doc,
     bson::DateTime,
@@ -8,11 +10,12 @@ use mongodb::{
         event::{ChangeStreamEvent, OperationType},
         ChangeStream,
     },
-    options::ClientOptions,
     Client, Collection,
 };
 use serde::{Deserialize, Serialize};
 use std::env;
+
+const MONGO_DUPLICATE_KEY_ERROR_CODE: i32 = 11000;
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Subscription {
@@ -112,25 +115,34 @@ impl EventsDB {
     }
 
     pub async fn subscribe(&self, chat_id: i64, channel: String) -> Result<()> {
-        // TODO: make it upsert
-        self.get_subscriptions()
+        let res = self
+            .get_subscriptions()
             .insert_one(Subscription { chat_id, channel }, None)
-            .await?;
+            .await;
+
+        if let Err(err) = res {
+            match *err.kind {
+                ErrorKind::Write(WriteFailure::WriteError(err))
+                    if err.code == MONGO_DUPLICATE_KEY_ERROR_CODE =>
+                {
+                    return Ok(())
+                }
+                _ => return Err(err.into()),
+            }
+        }
 
         Ok(())
     }
 
     pub async fn unsubscribe(&self, chat_id: i64, channel: String) -> Result<()> {
-        // TODO: change to delete one when upserting in subscribe
         self.get_subscriptions()
-            .delete_many(doc! { "chatId": chat_id, "channel": channel }, None)
+            .delete_one(doc! { "chatId": chat_id, "channel": channel }, None)
             .await?;
 
         Ok(())
     }
 
     pub async fn get_subscribers(&self, channel: String) -> Result<Vec<i64>> {
-        // TODO: change to delete one when upserting in subscribe
         let mut cursor = self
             .get_subscriptions()
             .find(doc! { "channel": channel }, None)
@@ -165,17 +177,7 @@ impl EventsDB {
 }
 
 pub async fn connect() -> Result<EventsDB> {
-    let username = env::var("MONGO_USER")?;
-    let password = env::var("MONGO_PASS")?;
-
-    let client_options = ClientOptions::parse(format!(
-        "mongodb+srv://{username}:{password}@cluster0.xlyaogx.mongodb.net/?retryWrites=true&w=majority"
-    ))
-    .await?;
-
-    let client = Client::with_options(client_options)?;
-
     Ok(EventsDB {
-        mongo_client: client,
+        mongo_client: Client::with_uri_str(env::var("MONGO_URL")?).await?,
     })
 }

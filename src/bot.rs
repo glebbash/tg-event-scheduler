@@ -1,6 +1,6 @@
 use crate::events_db::{Event, EventsDB};
 use anyhow::Result;
-use chrono::prelude::Local;
+use chrono::{FixedOffset, Utc};
 use chrono_english::Dialect;
 use mongodb::bson::DateTime;
 use teloxide::{
@@ -50,8 +50,11 @@ async fn handle_bot_commands(bot: Bot, db: EventsDB, msg: Message, cmd: Command)
             }
             let event_message = event_message.unwrap();
 
-            let notify_at =
-                chrono_english::parse_date_string(&notify_at_str, Local::now(), Dialect::Uk);
+            let notify_at = chrono_english::parse_date_string(
+                &notify_at_str,
+                Utc::now().with_timezone(&get_ukraine_tz()),
+                Dialect::Uk,
+            );
 
             if notify_at.is_err() {
                 bot.send_message(msg.chat.id, "Err: Invalid date").await?;
@@ -108,4 +111,9 @@ fn accept_two_digits(input: String) -> Result<(String, String, Option<String>), 
             format!("2 or 3 arguments expected, not {}", len).into(),
         )),
     }
+}
+
+// TODO: make offset customizable
+fn get_ukraine_tz() -> FixedOffset {
+    FixedOffset::east(3 * 60 * 60)
 }

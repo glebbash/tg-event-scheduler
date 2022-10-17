@@ -8,6 +8,7 @@ pub async fn start(bot: Bot, db: EventsDB) {
     while let Some(change) = changes.next().await {
         if let EventChange::Triggered(event_id) = change {
             let event = db.get_event(event_id).await.unwrap().unwrap();
+            log::info!("Event triggered: {:?}", event);
 
             let chat_ids = db.get_subscribers(event.channel).await.unwrap();
 
