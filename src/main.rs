@@ -1,5 +1,5 @@
 use dotenv::dotenv;
-use teloxide::prelude::*;
+use teloxide::prelude::Bot;
 use warp::Filter;
 
 mod bot;
@@ -10,7 +10,7 @@ mod notifier;
 async fn main() {
     dotenv().ok();
     pretty_env_logger::init();
-    log::info!("Starting command bot...");
+    log::info!("Starting event scheduler bot...");
 
     let bot = Bot::from_env();
     let db = events_db::connect()
