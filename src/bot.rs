@@ -8,7 +8,6 @@ use teloxide::{
     utils::command::{BotCommands, ParseError},
 };
 
-// TODO: add command to delete events
 #[derive(BotCommands, Clone)]
 #[command(
     rename_rule = "lowercase",
@@ -125,7 +124,6 @@ fn parse_args(input: String) -> Result<(String, String, Option<String>), ParseEr
     }
 }
 
-// TODO: make offset customizable
 fn get_ukraine_tz() -> FixedOffset {
     FixedOffset::east(3 * 60 * 60)
 }

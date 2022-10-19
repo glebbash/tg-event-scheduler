@@ -19,7 +19,6 @@ pub async fn start(bot: Bot, db: EventsDB) {
 
             let chat_ids = db.get_subscribers(&event.channel).await.unwrap();
 
-            // TODO: send in parralel?
             for chat_id in chat_ids {
                 bot.send_message(ChatId(chat_id), &event.message)
                     .await
