@@ -11,7 +11,7 @@ use teloxide::{
 
 #[derive(BotCommands, Clone)]
 #[command(
-    rename_rule = "kebab-case",
+    rename_rule = "snake_case",
     description = "These commands are supported:"
 )]
 enum Command {
@@ -27,7 +27,7 @@ enum Command {
     )]
     Schedule(String, String, Option<String>),
     #[command(
-        description = "<timezone> - timezone to use for current chat. Default is `Europe/Kiev`. See: https://docs.rs/chrono-tz/latest/chrono_tz/#modules"
+        description = "<timezone> - timezone to use for current chat. Default is `Europe/Kiev`"
     )]
     SetTimezone(String),
 }
