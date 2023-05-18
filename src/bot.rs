@@ -1,7 +1,8 @@
 use crate::events_db::{Event, EventsDB};
 use anyhow::Result;
-use chrono::{FixedOffset, Utc};
+use chrono::Utc;
 use chrono_english::Dialect;
+use chrono_tz::Tz;
 use mongodb::bson::DateTime;
 use teloxide::{
     prelude::*,
@@ -10,7 +11,7 @@ use teloxide::{
 
 #[derive(BotCommands, Clone)]
 #[command(
-    rename_rule = "lowercase",
+    rename_rule = "kebab-case",
     description = "These commands are supported:"
 )]
 enum Command {
@@ -19,12 +20,16 @@ enum Command {
     #[command(description = "<topic-name> - subscribe current chat to specified topic")]
     Subscribe(String),
     #[command(description = "<topic-name> - unsubscribe current chat from specified topic")]
-    UnSubscribe(String),
+    Unsubscribe(String),
     #[command(
         description = "<topic-name>, <date> - schedule replied message to be sent at specified date",
         parse_with = parse_args,
     )]
     Schedule(String, String, Option<String>),
+    #[command(
+        description = "<timezone> - timezone to use for current chat. Default is `Europe/Kiev`. See: https://docs.rs/chrono-tz/latest/chrono_tz/#modules"
+    )]
+    SetTimezone(String),
 }
 
 async fn handle_bot_commands(bot: Bot, db: EventsDB, msg: Message, cmd: Command) -> Result<()> {
@@ -38,7 +43,7 @@ async fn handle_bot_commands(bot: Bot, db: EventsDB, msg: Message, cmd: Command)
         Command::Subscribe(channel) => {
             db.subscribe(msg.chat.id.0, channel).await?;
         }
-        Command::UnSubscribe(channel) => {
+        Command::Unsubscribe(channel) => {
             db.unsubscribe(msg.chat.id.0, channel).await?;
         }
         Command::Schedule(channel, notify_at_str, interval) => {
@@ -57,9 +62,15 @@ async fn handle_bot_commands(bot: Bot, db: EventsDB, msg: Message, cmd: Command)
             }
             let event_message = event_message.unwrap();
 
+            let timezone = db
+                .get_chat_timezone(msg.chat.id.0)
+                .await?
+                .and_then(|t| t.timezone.parse::<Tz>().ok())
+                .unwrap_or(Tz::Europe__Kiev);
+
             let notify_at = chrono_english::parse_date_string(
                 &notify_at_str,
-                Utc::now().with_timezone(&get_ukraine_tz()),
+                Utc::now().with_timezone(&timezone),
                 Dialect::Uk,
             );
             if notify_at.is_err() {
@@ -70,7 +81,7 @@ async fn handle_bot_commands(bot: Bot, db: EventsDB, msg: Message, cmd: Command)
 
             if let Some(interval_str) = &interval {
                 if let Err(err) = parse_duration::parse(interval_str) {
-                    bot.send_message(msg.chat.id, format!("Err: Invalid interval: {err}"))
+                    bot.send_message(msg.chat.id, format!("Err(Invalid interval): {err}"))
                         .await?;
                     return Ok(());
                 }
@@ -84,6 +95,22 @@ async fn handle_bot_commands(bot: Bot, db: EventsDB, msg: Message, cmd: Command)
                 interval,
             })
             .await?;
+        }
+        Command::SetTimezone(timezone) => {
+            if let Err(err_msg) = timezone.parse::<Tz>() {
+                bot.send_message(
+                    msg.chat.id,
+                    format!(
+                        "Err(Invalid timezone): {err_msg}.\n\
+                        \n\
+                        See: https://docs.rs/chrono-tz/latest/chrono_tz/#modules"
+                    ),
+                )
+                .await?;
+                return Ok(());
+            }
+
+            db.set_chat_timezone(msg.chat.id.0, timezone).await?;
         }
     };
 
@@ -122,8 +149,4 @@ fn parse_args(input: String) -> Result<(String, String, Option<String>), ParseEr
             format!("2 or 3 arguments expected, not {}", len).into(),
         )),
     }
-}
-
-fn get_ukraine_tz() -> FixedOffset {
-    FixedOffset::east(3 * 60 * 60)
 }

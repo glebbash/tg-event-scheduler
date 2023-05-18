@@ -3,6 +3,8 @@ use futures::stream::StreamExt;
 use futures::stream::TryStreamExt;
 use mongodb::error::ErrorKind;
 use mongodb::error::WriteFailure;
+use mongodb::options::UpdateOptions;
+use mongodb::Database;
 use mongodb::{
     bson::doc,
     bson::DateTime,
@@ -41,6 +43,16 @@ pub struct EventTrigger {
     pub id: i32,
     #[serde(rename = "notifyAt")]
     pub notify_at: DateTime,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct ChatTimezone {
+    #[serde(rename = "_id")]
+    pub id: i32,
+    #[serde(rename = "chatId")]
+    pub chat_id: String,
+    #[serde(rename = "timezone")]
+    pub timezone: String,
 }
 
 #[derive(Clone)]
@@ -157,22 +169,48 @@ impl EventsDB {
         Ok(chat_ids)
     }
 
+    pub async fn set_chat_timezone(&self, chat_id: i64, timezone: String) -> Result<()> {
+        self.get_chat_timezones()
+            .update_one(
+                doc! { "chatId": chat_id },
+                doc! {
+                    "$set": { "timezone": timezone },
+                    "$setOnInsert": { "chatId": chat_id },
+                },
+                UpdateOptions::builder().upsert(true).build(),
+            )
+            .await?;
+
+        Ok(())
+    }
+
+    pub async fn get_chat_timezone(&self, chat_id: i64) -> Result<Option<ChatTimezone>> {
+        let res = self
+            .get_chat_timezones()
+            .find_one(doc! { "chatId": chat_id }, None)
+            .await?;
+
+        Ok(res)
+    }
+
+    fn get_db(&self) -> Database {
+        self.mongo_client.database("tg-event-scheduler")
+    }
+
     fn get_subscriptions(&self) -> Collection<Subscription> {
-        self.mongo_client
-            .database("tg-event-scheduler")
-            .collection("subscriptions")
+        self.get_db().collection("subscriptions")
     }
 
     fn get_events(&self) -> Collection<Event> {
-        self.mongo_client
-            .database("tg-event-scheduler")
-            .collection("event-info")
+        self.get_db().collection("event-info")
     }
 
     fn get_event_triggers(&self) -> Collection<EventTrigger> {
-        self.mongo_client
-            .database("tg-event-scheduler")
-            .collection("events")
+        self.get_db().collection("events")
+    }
+
+    fn get_chat_timezones(&self) -> Collection<ChatTimezone> {
+        self.get_db().collection("chat-timezones")
     }
 }
 

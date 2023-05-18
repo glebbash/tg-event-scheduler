@@ -19,6 +19,7 @@ futures = "0.3.24"
 chrono = "0.4.22"
 chrono-english = "0.1.7"
 parse_duration = "2.1.1"
+chrono-tz = "0.8.2"
 
 [[bin]]
 name = "tg-event-scheduler"
