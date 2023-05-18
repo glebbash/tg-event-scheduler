@@ -48,9 +48,7 @@ pub struct EventTrigger {
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct ChatTimezone {
     #[serde(rename = "_id")]
-    pub id: i32,
-    #[serde(rename = "chatId")]
-    pub chat_id: String,
+    pub chat_id: i32,
     #[serde(rename = "timezone")]
     pub timezone: String,
 }
@@ -172,10 +170,10 @@ impl EventsDB {
     pub async fn set_chat_timezone(&self, chat_id: i64, timezone: String) -> Result<()> {
         self.get_chat_timezones()
             .update_one(
-                doc! { "chatId": chat_id },
+                doc! { "_id": chat_id },
                 doc! {
                     "$set": { "timezone": timezone },
-                    "$setOnInsert": { "chatId": chat_id },
+                    "$setOnInsert": { "_id": chat_id },
                 },
                 UpdateOptions::builder().upsert(true).build(),
             )
@@ -187,7 +185,7 @@ impl EventsDB {
     pub async fn get_chat_timezone(&self, chat_id: i64) -> Result<Option<ChatTimezone>> {
         let res = self
             .get_chat_timezones()
-            .find_one(doc! { "chatId": chat_id }, None)
+            .find_one(doc! { "_id": chat_id }, None)
             .await?;
 
         Ok(res)
