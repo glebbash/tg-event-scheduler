@@ -103,7 +103,7 @@ async fn handle_bot_commands(bot: Bot, db: EventsDB, msg: Message, cmd: Command)
                     format!(
                         "Err(Invalid timezone): {err_msg}.\n\
                         \n\
-                        See: https://docs.rs/chrono-tz/latest/chrono_tz/#modules"
+                        See: https://en.wikipedia.org/wiki/List_of_tz_database_time_zones"
                     ),
                 )
                 .await?;

@@ -12,4 +12,4 @@ Default timezone for messages is set to `Europe/Kiev`.
 
 You can change it on per chat basis, see `/help` for list of commands.
 
-See: [parsing lib docs](https://docs.rs/chrono-tz/latest/chrono_tz/#modules) for available timezone.
+See: [timezones wiki](https://en.wikipedia.org/wiki/List_of_tz_database_time_zones) for available timezone.
