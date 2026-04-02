@@ -1,7 +1,5 @@
 # Events - telegram bot for message scheduling
 
-https://t.me/tg_event_scheduler_bot
-
 Telegram bot for scheduling events (written in Rust of course). 
 
 ![Demo](./demo.gif)
